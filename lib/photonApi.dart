@@ -20,12 +20,14 @@ class PhotonAPI
 
 	Future<List<Address>> resolve({String query, Duration cooldown = const Duration(seconds: 1)}) async
 	{
-		if (DateTime.now().millisecondsSinceEpoch - _lastRequest.millisecondsSinceEpoch < cooldown.inMilliseconds)
+		if (DateTime.now().millisecondsSinceEpoch - _lastRequest.millisecondsSinceEpoch > cooldown.inMilliseconds)
 		{
 			_lastRequest = DateTime.now();
 
 			String jsonString = "";
 			List<Address> aList = new List<Address>();
+			dynamic json;
+
 			print("Resolving query '${query}' using get request => '${host}?q=${query}'");
 
 			var request = await HttpClient().getUrl(Uri.parse('${host}?q=' + Uri.encodeComponent(query)));
@@ -36,55 +38,68 @@ class PhotonAPI
 				jsonString = contents;
 			}
 
-			dynamic json = jsonDecode(jsonString);
-
-			for (dynamic map in json['features'])
+			try
 			{
-				Address a;
-
-				double lat = map['geometry']['coordinates'][0];
-				double lng = map['geometry']['coordinates'][1];
-
-				String osm_key = map['properties']['osm_key'];
-				String osm_value = map['properties']['osm_value'];
-				String osm_type = map['properties']['osm_type'];
-
-				String name = map['properties']['name'];
-
-				String country = map['properties']['country'];
-
-				String street = map['properties']['street'];
-				String housenumber = map['properties']['housenumber'];
-
-				String city = map['properties']['city'];
-				String postcode = map['properties']['postcode'];
-				String state = map['properties']['state'];
-
-				LatLng latLng = new LatLng(lat, lng);
-				
-				a = new Address(
-					osm_key: osm_key,
-					osm_value: osm_value,
-					osm_type: osm_type,
-
-					name: name,
-
-					country: country,
-
-					street: street,
-					housenumber: housenumber,
-
-					city: city,
-					postcode: postcode,
-					state: state,
-
-					coordinates: latLng
-				);
-
-				aList.add(a);
+				json = jsonDecode(jsonString);
+			}
+			catch (e)
+			{
+				print("WARNING: Failed to parse photon json output.");
+				return null;
 			}
 
-			return aList;
+			if (json != null)
+			{
+				for (dynamic map in json['features'])
+				{
+					Address a;
+
+					double lat = map['geometry']['coordinates'][0];
+					double lng = map['geometry']['coordinates'][1];
+
+					String osm_key = map['properties']['osm_key'];
+					String osm_value = map['properties']['osm_value'];
+					String osm_type = map['properties']['osm_type'];
+
+					String name = map['properties']['name'];
+
+					String country = map['properties']['country'];
+
+					String street = map['properties']['street'];
+					String housenumber = map['properties']['housenumber'];
+
+					String city = map['properties']['city'];
+					String postcode = map['properties']['postcode'];
+					String state = map['properties']['state'];
+
+					LatLng latLng = new LatLng(lat, lng);
+					
+					a = new Address(
+						osm_key: osm_key,
+						osm_value: osm_value,
+						osm_type: osm_type,
+
+						name: name,
+
+						country: country,
+
+						street: street,
+						housenumber: housenumber,
+
+						city: city,
+						postcode: postcode,
+						state: state,
+
+						coordinates: latLng
+					);
+
+					aList.add(a);
+				}
+
+				print("Resolved query with ${aList.length} entries");
+
+				return aList;
+			}
 		}
 		else
 			print("WARNING: Cooldown, your latest request was less than the cooldown duration. (${DateTime.now().millisecondsSinceEpoch - _lastRequest.millisecondsSinceEpoch}/${cooldown.inMilliseconds}ms)");
