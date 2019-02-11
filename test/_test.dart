@@ -1,5 +1,5 @@
-import 'package:PhotonAPI/photonApi.dart';
-import 'package:PhotonAPI/address.dart';
+import '../lib/photonApi.dart';
+import '../lib/address.dart';
 
 void main() async
 {
