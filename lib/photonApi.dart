@@ -17,19 +17,26 @@ class PhotonAPI
 
 	PhotonAPI(this.host)
 	{
-		_lastRequest = DateTime.now();
+		_lastRequest = DateTime.now().subtract(new Duration(milliseconds: 1000));
 	}
 
-	Future<Address> resolveSingle({String query, Duration cooldown = const Duration(seconds: 1), bool verbose = false}) async
+	Future<Address> resolveSingle({String query, String lang = "en", Duration cooldown = const Duration(seconds: 1), bool verbose = false}) async
 	{
 		if (DateTime.now().millisecondsSinceEpoch - _lastRequest.millisecondsSinceEpoch > cooldown.inMilliseconds)
 		{
 			_lastRequest = DateTime.now();
 			dynamic json;
 
-			print("Resolving query '${query}' using get request => '${host}?q=${query}'");
+			print("Resolving query '${query}' using get request => '${host}?q=${query}&lang=${lang}&limit=1'");
 
-			http.Response s = await _fetchPost("${host}?q=${query}");
+			http.Response s = await _fetchPost("${host}?q=${query}&lang=${lang}&limit=1");
+
+			if (verbose)
+			{
+				print("JSON>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+				print(s.body);
+				print("JSON^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+			}
 
 			try
 			{
@@ -38,14 +45,6 @@ class PhotonAPI
 			catch (e)
 			{
 				print("WARNING: Failed to parse photon json output.");
-
-				if (verbose)
-				{
-					print("JSON>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-					print(s.body);
-					print("JSON^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
-				}
-
 				return null;
 			}
 
@@ -109,18 +108,24 @@ class PhotonAPI
 		return null;
 	}
 
-	Future<List<Address>> resolve({String query, Duration cooldown = const Duration(seconds: 1), bool verbose = false}) async
+	Future<List<Address>> resolve({String query, String lang = "en", Duration cooldown = const Duration(seconds: 1), bool verbose = false}) async
 	{
-		if (DateTime.now().millisecondsSinceEpoch - _lastRequest.millisecondsSinceEpoch < cooldown.inMilliseconds)
+		if (DateTime.now().millisecondsSinceEpoch - _lastRequest.millisecondsSinceEpoch > cooldown.inMilliseconds)
 		{
 			_lastRequest = DateTime.now();
-
-			List<Address> aList = new List<Address>();
 			dynamic json;
+			List<Address> aList = new List<Address>();
 
-			print("Resolving query '${query}' using get request => '${host}?q=${query}'");
+			print("Resolving query '${query}' using get request => '${host}?q=${query}&lang=${lang}'");
 
-			http.Response s = await _fetchPost("${host}?q=${query}");
+			http.Response s = await _fetchPost("${host}?q=${query}&lang=${lang}");
+
+			if (verbose)
+			{
+				print("JSON>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+				print(s.body);
+				print("JSON^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+			}
 
 			try
 			{
@@ -129,13 +134,6 @@ class PhotonAPI
 			catch (e)
 			{
 				print("WARNING: Failed to parse photon json output.");
-
-				if (verbose)
-				{
-					print("JSON>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-					print(s.body);
-					print("JSON^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
-				}
 				return null;
 			}
 
@@ -145,8 +143,8 @@ class PhotonAPI
 				{
 					Address a;
 
-					double lat = map['geometry']['coordinates'][0];
-					double lng = map['geometry']['coordinates'][1];
+					double lat = map['geometry']['coordinates'][1];
+					double lng = map['geometry']['coordinates'][0];
 
 					String osm_key = map['properties']['osm_key'];
 					String osm_value = map['properties']['osm_value'];
