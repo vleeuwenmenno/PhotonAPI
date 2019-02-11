@@ -7,6 +7,8 @@ import 'dart:convert';
 import 'address.dart';
 import 'latLng.dart';
 
+import 'package:http/http.dart' as http;
+
 class PhotonAPI
 {
 	final String host;
@@ -23,23 +25,15 @@ class PhotonAPI
 		if (DateTime.now().millisecondsSinceEpoch - _lastRequest.millisecondsSinceEpoch > cooldown.inMilliseconds)
 		{
 			_lastRequest = DateTime.now();
-			
-			String jsonString = "";
 			dynamic json;
 
 			print("Resolving query '${query}' using get request => '${host}?q=${query}'");
 
-			var request = await HttpClient().getUrl(Uri.parse('${host}?q=' + Uri.encodeComponent(query)));
-			var response = await request.close(); 
-
-			await for (var contents in response.transform(Utf8Decoder())) 
-			{
-				jsonString = contents;
-			}
+			http.Response s = await _fetchPost("${host}?q=${query}");
 
 			try
 			{
-				json = jsonDecode(jsonString);
+				json = jsonDecode(s.body);
 			}
 			catch (e)
 			{
@@ -48,7 +42,7 @@ class PhotonAPI
 				if (verbose)
 				{
 					print("JSON>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-					print(jsonString);
+					print(s.body);
 					print("JSON^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
 				}
 
@@ -117,27 +111,20 @@ class PhotonAPI
 
 	Future<List<Address>> resolve({String query, Duration cooldown = const Duration(seconds: 1), bool verbose = false}) async
 	{
-		if (DateTime.now().millisecondsSinceEpoch - _lastRequest.millisecondsSinceEpoch > cooldown.inMilliseconds)
+		if (DateTime.now().millisecondsSinceEpoch - _lastRequest.millisecondsSinceEpoch < cooldown.inMilliseconds)
 		{
 			_lastRequest = DateTime.now();
 
-			String jsonString = "";
 			List<Address> aList = new List<Address>();
 			dynamic json;
 
 			print("Resolving query '${query}' using get request => '${host}?q=${query}'");
 
-			var request = await HttpClient().getUrl(Uri.parse('${host}?q=' + Uri.encodeComponent(query)));
-			var response = await request.close(); 
-
-			await for (var contents in response.transform(Utf8Decoder())) 
-			{
-				jsonString = contents;
-			}
+			http.Response s = await _fetchPost("${host}?q=${query}");
 
 			try
 			{
-				json = jsonDecode(jsonString);
+				json = jsonDecode(s.body);
 			}
 			catch (e)
 			{
@@ -146,7 +133,7 @@ class PhotonAPI
 				if (verbose)
 				{
 					print("JSON>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-					print(jsonString);
+					print(s.body);
 					print("JSON^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
 				}
 				return null;
@@ -209,5 +196,9 @@ class PhotonAPI
 			print("WARNING: Cooldown, your latest request was less than the cooldown duration. (${DateTime.now().millisecondsSinceEpoch - _lastRequest.millisecondsSinceEpoch}/${cooldown.inMilliseconds}ms)");
 	
 		return null;
+	}
+
+	Future<http.Response> _fetchPost(String url) {
+		return http.get(url);
 	}
 }
