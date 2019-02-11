@@ -18,7 +18,104 @@ class PhotonAPI
 		_lastRequest = DateTime.now();
 	}
 
-	Future<List<Address>> resolve({String query, Duration cooldown = const Duration(seconds: 1)}) async
+	Future<Address> resolveSingle({String query, Duration cooldown = const Duration(seconds: 1), bool verbose = false}) async
+	{
+		if (DateTime.now().millisecondsSinceEpoch - _lastRequest.millisecondsSinceEpoch > cooldown.inMilliseconds)
+		{
+			_lastRequest = DateTime.now();
+			
+			String jsonString = "";
+			dynamic json;
+
+			print("Resolving query '${query}' using get request => '${host}?q=${query}'");
+
+			var request = await HttpClient().getUrl(Uri.parse('${host}?q=' + Uri.encodeComponent(query)));
+			var response = await request.close(); 
+
+			await for (var contents in response.transform(Utf8Decoder())) 
+			{
+				jsonString = contents;
+			}
+
+			try
+			{
+				json = jsonDecode(jsonString);
+			}
+			catch (e)
+			{
+				print("WARNING: Failed to parse photon json output.");
+
+				if (verbose)
+				{
+					print("JSON>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+					print(jsonString);
+					print("JSON^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+				}
+
+				return null;
+			}
+
+			if (json != null)
+			{
+				for (dynamic map in json['features'])
+				{
+					Address a;
+
+					double lat = map['geometry']['coordinates'][0];
+					double lng = map['geometry']['coordinates'][1];
+
+					String osm_key = map['properties']['osm_key'];
+					String osm_value = map['properties']['osm_value'];
+					String osm_type = map['properties']['osm_type'];
+
+					String name = map['properties']['name'];
+
+					String country = map['properties']['country'];
+
+					String street = map['properties']['street'];
+					String housenumber = map['properties']['housenumber'];
+
+					String city = map['properties']['city'];
+					String postcode = map['properties']['postcode'];
+					String state = map['properties']['state'];
+
+					LatLng latLng = new LatLng(lat, lng);
+					
+					a = new Address(
+						osm_key: osm_key,
+						osm_value: osm_value,
+						osm_type: osm_type,
+
+						name: name,
+
+						country: country,
+
+						street: street,
+						housenumber: housenumber,
+
+						city: city,
+						postcode: postcode,
+						state: state,
+
+						coordinates: latLng
+					);
+
+					print("Resolved query \"${a.street} ${a.housenumber}, ${a.city} ${a.postcode}\"");
+					return a;
+				}
+
+
+				print("Did not resolve query. :(");
+				return null;
+			}
+		}
+		else
+			print("WARNING: Cooldown, your latest request was less than the cooldown duration. (${DateTime.now().millisecondsSinceEpoch - _lastRequest.millisecondsSinceEpoch}/${cooldown.inMilliseconds}ms)");
+	
+		return null;
+	}
+
+	Future<List<Address>> resolve({String query, Duration cooldown = const Duration(seconds: 1), bool verbose = false}) async
 	{
 		if (DateTime.now().millisecondsSinceEpoch - _lastRequest.millisecondsSinceEpoch > cooldown.inMilliseconds)
 		{
@@ -45,6 +142,13 @@ class PhotonAPI
 			catch (e)
 			{
 				print("WARNING: Failed to parse photon json output.");
+
+				if (verbose)
+				{
+					print("JSON>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+					print(jsonString);
+					print("JSON^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+				}
 				return null;
 			}
 
@@ -103,5 +207,7 @@ class PhotonAPI
 		}
 		else
 			print("WARNING: Cooldown, your latest request was less than the cooldown duration. (${DateTime.now().millisecondsSinceEpoch - _lastRequest.millisecondsSinceEpoch}/${cooldown.inMilliseconds}ms)");
+	
+		return null;
 	}
 }
